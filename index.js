@@ -28,7 +28,6 @@ class SessionGrantStore {
     }
 
     saveGrant(request, grant) {
-        console.log(`saving ${this.options.key}`);
         request.yar.set(this.options.key, grant);
     }
 
@@ -262,7 +261,7 @@ class KeycloakAdapter {
             if (this.grantManager.isGrantRefreshable(grant)) {
                 grant = await this.grantManager.ensureFreshness(grant);
                 if (grant !== existingGrant) {
-                    log(['debug', 'keycloak'], 'Access token has been refreshed');
+                    log(['debug', 'keycloak'], `Access token has been refreshed: ${grant}`);
                     grant = await this.grantManager.validateGrant(grant);
                     grantStore.saveGrant(request, grant);
                 }
