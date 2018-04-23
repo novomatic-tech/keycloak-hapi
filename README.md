@@ -16,7 +16,7 @@ This package:
       method: ['GET'],
       path: '/restricted',
       handler(request, reply) {
-          return `Hello, ${request.auth.credentials.principalName}!`; // this will return user's full name.
+          return `Hello, ${request.auth.credentials.name}!`; // this will return user's full name.
       },
       options: {
          auth: {
