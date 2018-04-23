@@ -1,0 +1,43 @@
+{
+  "name": "keycloak-hapi",
+  "version": "0.1.0",
+  "description": "Integration of Keycloak Authorization Server with HapiJS",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/novomatic-tech/keycloak-hapi.git"
+  },
+  "keywords": [
+    "hapi",
+    "hapijs",
+    "auth",
+    "keycloak",
+    "authorization",
+    "oauth2.0",
+    "oauth",
+    "oidc"
+  ],
+  "author": "NOVOMATIC Technologies Poland S.A.",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/novomatic-tech/keycloak-hapi/issues"
+  },
+  "homepage": "https://github.com/novomatic-tech/keycloak-hapi#readme",
+  "dependencies": {
+    "boom": "^7.2.0",
+    "keycloak-connect": "^4.0.0-beta.1",
+    "lodash": "^4.17.5",
+    "url-join": "^4.0.0"
+  },
+  "peerDependencies": {
+    "hapi": "^17.0.0",
+    "yar": "^9.0.1"
+  },
+  "engines": {
+    "node": ">=8",
+    "npm": ">=5"
+  }
+}
