@@ -270,7 +270,7 @@ class KeycloakAdapter {
             }
             return this.getPrincipal(grant);
         } catch(err) {
-            log(['warning', 'keycloak'], `Authorization has failed - Received grant is invalid: ${err}.`);
+            log(['warn', 'keycloak'], `Authorization has failed - Received grant is invalid: ${err}.`);
             grantStore.clearGrant(request);
             return null;
         }
@@ -316,7 +316,7 @@ class KeycloakAdapter {
         } else if (grant.access_token.content[principalNameAttribute]) {
             principalName = grant.access_token.content[principalNameAttribute];
         } else {
-            this.server.log(['warning', 'keycloak'], `Neither ID token nor access token contains '${principalNameAttribute}' attribute. Using 'sub' instead.`);
+            this.server.log(['warn', 'keycloak'], `Neither ID token nor access token contains '${principalNameAttribute}' attribute. Using 'sub' instead.`);
             principalName = grant.access_token.content.sub;
         }
         return principalName;
