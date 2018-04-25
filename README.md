@@ -104,3 +104,7 @@ Parameter | Description | Default
 `principalNameAttribute` | An access/ID token attribute which will be used as the principal name (user name). It will fallback to *sub* token attribute in case the *principalNameAttribute* is not present. Possible values are *sub*, *preferred_username*, *email*, *name*. | `name`
 `corsOrigin` | CORS for the `loginUrl` and `logoutUrl` endpoints. In production, only Keycloak server's FQDN should be defined here. | `['*']`
 `shouldRedirectUnauthenticated` | A function used for not authenticated users. It takes a `request` as a parameter and should return: - `false` - if the endpoint should reply with an HTTP 401 right away. - `true` - if the user should be redirected to the Keycloak login page. By default, `401` will be returned when `bearerOnly` is set to `true`, route auth mode is set to `optional` or `try` or if we're accessing `/api/*` route. |
+
+## Examples
+
+See https://github.com/novomatic-tech/keycloak-examples/tree/master/app-web-nodejs
