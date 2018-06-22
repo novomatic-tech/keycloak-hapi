@@ -2,6 +2,10 @@ language: node_js
 node_js:
   - "8"
 
+install:
+  - npm install
+  - npm run build
+  
 deploy:
   provider: npm
   email: "mchmiel@novomatic-tech.com"
