@@ -247,7 +247,7 @@ class KeycloakAdapter {
     }
 
     getBaseUrl(request) {
-        return urljoin(`${getProtocol(request)}://${getHost(request)}`, this.server.realm.modifiers.route.prefix || '');
+        return urljoin(`${getProtocol(request)}://${getHost(request)}`, this.config.basePath || '', this.server.realm.modifiers.route.prefix || '');
     }
 
     getLoginRedirectUrl(request) {
