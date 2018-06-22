@@ -4,8 +4,7 @@
   "description": "Integration of Keycloak Authorization Server with HapiJS",
   "main": "dist/index.js",
   "scripts": {
-    "build": "babel --plugins transform-runtime src -d dist",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "babel --plugins transform-runtime src -d dist"
   },
   "repository": {
     "type": "git",
