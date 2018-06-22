@@ -1,0 +1,12 @@
+language: node_js
+node_js:
+  - "8"
+
+deploy:
+  provider: npm
+  email: "mchmiel@novomatic-tech.com"
+  api_key: $AUTH_TOKEN
+  on:
+    tags: true
+
+
