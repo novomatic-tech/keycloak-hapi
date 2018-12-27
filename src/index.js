@@ -6,11 +6,67 @@ const UUID = require('keycloak-connect/uuid');
 const Boom = require('boom');
 const _ = require('lodash');
 const pkg = require('../package.json');
-const axios = require('axios');
+const crypto = require('crypto');
 const urljoin = require('url-join');
 
 const getProtocol = (request) => request.headers['x-forwarded-proto'] || request.server.info.protocol;
 const getHost = (request) => request.headers['x-forwarded-host'] || request.info.host;
+
+class ActionTokenVerifier {
+
+    constructor(grantManager) {
+        this.grantManager = grantManager;
+    }
+
+    async verify(token, {action, resource}) {
+
+        const tokenRules = [
+            {
+                verify: () => token,
+                error: new Error('Invalid token (missing)')
+            },
+            {
+                verify: () => token.content.expiration * 1000 > Date.now(),
+                error: new Error('Invalid token (expired)')
+            },
+            {
+                verify: () => token.signed,
+                error: new Error('Invalid token (not signed)')
+            },
+            {
+                verify: () => token.content.action === action,
+                error: new Error('Invalid token (wrong action)')
+            },
+            {
+                verify: () => token.content.resource === resource,
+                error: new Error('Invalid token (wrong resource)')
+            },
+            {
+                verify: async () => {
+                    const verify = crypto.createVerify('RSA-SHA256');
+                    if (this.grantManager.publicKey) {
+                        verify.update(token.signed);
+                        return verify.verify(this.grantManager.publicKey, token.signature, 'base64');
+                    } else {
+                        const key = await this.grantManager.rotation.getJWK(token.header.kid);
+                        verify.update(token.signed);
+                        return verify.verify(key, token.signature)
+                    }
+                },
+                error: new Error('Invalid token (signature)')
+            }
+        ];
+
+        for (const rule of tokenRules) {
+            if (!await rule.verify()) {
+                throw rule.error;
+            }
+        }
+
+        return token;
+    }
+
+}
 
 class SessionGrantStore {
     constructor(options = null) {
@@ -186,7 +242,6 @@ class KeycloakAdapter {
         this.config = Object.assign({
             loginUrl: '/sso/login',
             logoutUrl: '/sso/logout',
-            backChannelLogoutUrl: '/k_logout',
             principalUrl: '/api/principal',
             corsOrigin: ['*'],
             principalConversion: defaultPrincipalConversion,
@@ -199,6 +254,7 @@ class KeycloakAdapter {
         }
         this.keycloakConfig = new KeycloakConfig(this.config);
         this.grantManager = new GrantManager(this.keycloakConfig);
+        this.actionTokenVerifier = new ActionTokenVerifier(this.grantManager);
         this.grantSerializer = new GrantSerializer(this.config.clientId);
         this.grantStores = this.createGrantStores(this.config.bearerOnly);
         this.replyStrategy = server.version < '17'
@@ -216,11 +272,11 @@ class KeycloakAdapter {
         return stores;
     }
 
-    obtainGrantFromCode(code, redirectUri, sessionId) {
+    obtainGrantFromCode(code, redirectUri, sessionId, sessionHost) {
         const req = {
             session: {auth_redirect_uri: redirectUri}
         };
-        return this.grantManager.obtainFromCode(req, code, sessionId);
+        return this.grantManager.obtainFromCode(req, code, sessionId, sessionHost);
     }
 
     getLoginUrl(redirectUrl, stateUuid = null) {
@@ -355,7 +411,6 @@ class KeycloakAdapter {
 
     register() {
         this.server.auth.scheme('keycloak', this.getAuthScheme.bind(this)());
-        registerDropSessionMethod(this);
         if (!this.config.bearerOnly) {
             registerLoginRoute(this);
             registerLogoutRoute(this);
@@ -412,7 +467,7 @@ const registerLoginRoute = (keycloak) => {
                 }
                 try {
                     log(['debug', 'keycloak'], `Processing authorization code`);
-                    const grant = await keycloak.obtainGrantFromCode(request.query.code, redirectUrl, request.yar.id);
+                    const grant = await keycloak.obtainGrantFromCode(request.query.code, redirectUrl, request.yar.id, keycloak.getBaseUrl(request));
                     grantStore.saveGrant(request, grant);
                     log(['debug', 'keycloak'], `Access token has been successfully obtained from the authorization code:\n${grant}`);
                     return reply.redirect(keycloak.getBaseUrl(request));
@@ -432,29 +487,32 @@ const registerLoginRoute = (keycloak) => {
     });
 };
 
-const registerDropSessionMethod = (keycloak) => {
-    keycloak.server.method('dropSession', (sessionId) => {
-        const cache = keycloak.server._core.caches.get(keycloak.config.cacheName);
-        if (cache) {
-            return cache.client.drop({id: sessionId, segment: '!yar'})
-        }
-        throw new Error(`Cannot find the "${keycloak.config.cacheName}" cache for drop procedure.`);
-    })
-};
-
 const registerBackChannelLogoutRoute = (keycloak) => {
     keycloak.server.route({
-        path: keycloak.config.backChannelLogoutUrl,
+        path: '/k_logout',
         method: 'POST',
         handler: async (request, reply) => {
             keycloak.server.log(['debug', 'keycloak'], 'Back-channel logout');
+
             const logoutToken = new Token(request.payload);
+
+            try {
+                await keycloak.actionTokenVerifier.verify(logoutToken, {action: 'LOGOUT', resource: keycloak.config.clientId});
+            } catch (ex) {
+                const message = `Invalid token has been provided. ${ex}`;
+                keycloak.server.log(['warn', 'keycloak'], message);
+                return keycloak.answer(reply).representation(Boom.badRequest(message));
+            }
+
             const sessionIds = logoutToken.content.adapterSessionIds || [];
             try {
-                await Promise.all(sessionIds.map(keycloak.server.methods.dropSession));
+                await Promise.all(sessionIds.map(sessionId => keycloak.server.yar.revoke(sessionId)));
             } catch (ex) {
-                keycloak.server.log(['warn', 'keycloak'], `An error occurred during dropping sessions. Error: ${ex}`);
+                const message = `An error occurred during dropping sessions. ${ex}`;
+                keycloak.server.log(['warn', 'keycloak'], message);
+                return keycloak.answer(reply).representation(Boom.notImplemented(message));
             }
+
             return keycloak.answer(reply).representation('Successfully dropped all user\'s sessions.');
         },
         config: {
@@ -467,31 +525,22 @@ const registerLogoutRoute = (keycloak) => {
     keycloak.server.route({
         path: keycloak.config.logoutUrl,
         method: 'GET',
-        handler: async (request, reply) => {
+        handler(request, reply) {
             keycloak.server.log(['debug', 'keycloak'], 'Signing out');
             const grantStore = keycloak.getGrantStoreByName('session');
-            const grant = grantStore.getGrant(request);
-            const baseUrl = keycloak.getBaseUrl(request);
-            if (!grant) {
-                return reply.redirect(baseUrl);
-            }
             grantStore.clearGrant(request);
-            const logoutUrl = keycloak.getLogoutUrl({idTokenHint: grant.id_token.token});
-            try {
-                await axios.get(logoutUrl);
-                keycloak.server.log(['debug', 'keycloak'], 'Successfully signed out from the authentication server.');
-            } catch (ex) {
-                keycloak.server.log(['warn', 'keycloak'], `An error occurred during signing out from the authentication server. Error: ${ex}`);
-            }
-
-            return reply.redirect(baseUrl);
+            const redirectUrl = keycloak.getBaseUrl(request);
+            const logoutUrl = keycloak.getLogoutUrl({redirectUrl});
+            return reply.redirect(logoutUrl);
         },
         config: {
-            auth: false
+            auth: false,
+            cors: {
+                origin: keycloak.config.corsOrigin
+            }
         }
     });
 };
-
 
 /* This is a plugin registration backward-compatible with Hapijs v14+ */
 const register = (server, options, next) => {

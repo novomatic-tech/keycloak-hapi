@@ -99,15 +99,18 @@ Parameter | Description | Default
 `minTimeBetweenJwksRequests` | Amount of time, in seconds, specifying minimum interval between two requests to Keycloak to retrieve new public keys. | `10`
 `loginUrl` | An URL of the endpoint responsible for obtaining OAuth2.0's Authorization Code grant. It is exposed only if `bearerOnly` is set to false. | `/sso/login`
 `logoutUrl` | An URL the endpoint responsible for handling logout procedure. It is exposed only if `bearerOnly` is set to false. | `/sso/logout` 
-`backChannelLogoutUrl` | An URL of the endpoint responsible for handling the [Back-Channel Logout](https://openid.net/specs/openid-connect-backchannel-1_0.html) procedure. It is exposed only if `bearerOnly` is set to false. | `/k_logout`
 `principalUrl` | An URL of the endpoint exposing resource owner's data (such as its name, ID token, access token etc.). Use `null` in order not to expose this endpoint at all. | `/api/principal`
 `principalConversion` | A function which alters principal representation exposed by `principalUrl` endpoint before it's sent in a response. Define this function if you don't want for example an access token to be exposed. | `undefined` (no conversion)
 `principalNameAttribute` | An access/ID token attribute which will be used as the principal name (user name). It will fallback to *sub* token attribute in case the *principalNameAttribute* is not present. Possible values are *sub*, *preferred_username*, *email*, *name*. | `name`
 `corsOrigin` | CORS for the `loginUrl` and `logoutUrl` endpoints. In production, only Keycloak server's FQDN should be defined here. | `['*']`
 `shouldRedirectUnauthenticated` | A function used for not authenticated users. It takes a `request` as a parameter and should return: - `false` - if the endpoint should reply with an HTTP 401 right away. - `true` - if the user should be redirected to the Keycloak login page. By default, `401` will be returned when `bearerOnly` is set to `true`, route auth mode is set to `optional` or `try` or if we're accessing `/api/*` route. |
 `basePath` | A base path to use if app is running behind a reverse proxy. This path will be inserted in redirect URIs. It could be useful when proxy changes the base path. | `undefined`
-`cacheName` | The name of cache where sessions are stored. This library use the [yar](https://github.com/hapijs/yar) abstraction for session management, so the value of this parameter must be the same as the name of cache storage. | `_default`
 
 ## Examples
 
 See https://github.com/novomatic-tech/keycloak-examples/tree/master/app-web-nodejs
+
+## Yar compatibility
+
+This package requires the [yar](https://www.npmjs.com/package/yar) library at least in version ``9.1.0``. 
+To get compatibility with version ``8``, use [yar8](https://www.npmjs.com/package/yar8).

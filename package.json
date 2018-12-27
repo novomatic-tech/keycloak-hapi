@@ -27,7 +27,6 @@
   },
   "homepage": "https://github.com/novomatic-tech/keycloak-hapi#readme",
   "dependencies": {
-    "axios": "^0.18.0",
     "babel-runtime": "^6.26.0",
     "boom": "^7.2.0",
     "keycloak-connect": "^4.0.0",
