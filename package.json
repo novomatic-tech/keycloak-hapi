@@ -35,7 +35,7 @@
   },
   "peerDependencies": {
     "hapi": "^17.0.0",
-    "yar": "^9.0.1"
+    "yar": "^9.1.0"
   },
   "engines": {
     "node": ">=8",

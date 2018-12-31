@@ -12,6 +12,33 @@ const urljoin = require('url-join');
 const getProtocol = (request) => request.headers['x-forwarded-proto'] || request.server.info.protocol;
 const getHost = (request) => request.headers['x-forwarded-host'] || request.info.host;
 
+const throwError = (message) => {
+    throw new Error(message)
+};
+
+const tokenRules = {
+    exists: (token) => token || throwError('Invalid token (missing)'),
+    notExpired: (token) => (token.content.exp || token.content.expiration) * 1000 > Date.now() || throwError('Invalid token (expired)'),
+    signed: (token) => token.signed || throwError('Invalid token (not signed)'),
+    validAction: (token, action) => token.content.action === action || throwError('Invalid token (wrong action)'),
+    validResource: (token, resource) => token.content.resource === resource || throwError('Invalid token (wrong resource)'),
+    validSignature: async (token, grantManager) => {
+        const verify = crypto.createVerify('RSA-SHA256');
+        if (grantManager.publicKey) {
+            verify.update(token.signed);
+            if (!verify.verify(grantManager.publicKey, token.signature, 'base64')) {
+                throwError('Invalid token (signature)')
+            }
+        } else {
+            const key = await grantManager.rotation.getJWK(token.header.kid);
+            verify.update(token.signed);
+            if (!verify.verify(key, token.signature)) {
+                throwError('Invalid token (signature)')
+            }
+        }
+    }
+};
+
 class ActionTokenVerifier {
 
     constructor(grantManager) {
@@ -19,50 +46,12 @@ class ActionTokenVerifier {
     }
 
     async verify(token, {action, resource}) {
-
-        const tokenRules = [
-            {
-                verify: () => token,
-                error: new Error('Invalid token (missing)')
-            },
-            {
-                verify: () => token.content.expiration * 1000 > Date.now(),
-                error: new Error('Invalid token (expired)')
-            },
-            {
-                verify: () => token.signed,
-                error: new Error('Invalid token (not signed)')
-            },
-            {
-                verify: () => token.content.action === action,
-                error: new Error('Invalid token (wrong action)')
-            },
-            {
-                verify: () => token.content.resource === resource,
-                error: new Error('Invalid token (wrong resource)')
-            },
-            {
-                verify: async () => {
-                    const verify = crypto.createVerify('RSA-SHA256');
-                    if (this.grantManager.publicKey) {
-                        verify.update(token.signed);
-                        return verify.verify(this.grantManager.publicKey, token.signature, 'base64');
-                    } else {
-                        const key = await this.grantManager.rotation.getJWK(token.header.kid);
-                        verify.update(token.signed);
-                        return verify.verify(key, token.signature)
-                    }
-                },
-                error: new Error('Invalid token (signature)')
-            }
-        ];
-
-        for (const rule of tokenRules) {
-            if (!await rule.verify()) {
-                throw rule.error;
-            }
-        }
-
+        tokenRules.exists(token);
+        tokenRules.notExpired(token);
+        tokenRules.signed(token);
+        tokenRules.validAction(token, action);
+        tokenRules.validResource(token, resource);
+        await tokenRules.validSignature(token, this.grantManager);
         return token;
     }
 
@@ -497,7 +486,10 @@ const registerBackChannelLogoutRoute = (keycloak) => {
             const logoutToken = new Token(request.payload);
 
             try {
-                await keycloak.actionTokenVerifier.verify(logoutToken, {action: 'LOGOUT', resource: keycloak.config.clientId});
+                await keycloak.actionTokenVerifier.verify(logoutToken, {
+                    action: 'LOGOUT',
+                    resource: keycloak.config.clientId
+                });
             } catch (ex) {
                 const message = `Invalid token has been provided. ${ex}`;
                 keycloak.server.log(['warn', 'keycloak'], message);
