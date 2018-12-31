@@ -109,3 +109,8 @@ Parameter | Description | Default
 ## Examples
 
 See https://github.com/novomatic-tech/keycloak-examples/tree/master/app-web-nodejs
+
+## Yar compatibility
+
+This package requires the [yar](https://www.npmjs.com/package/yar) library at least in version ``9.1.0``. 
+To get compatibility with version ``8``, use [yar8](https://www.npmjs.com/package/yar8).

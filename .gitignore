@@ -59,3 +59,6 @@ typings/
 
 .idea/
 *.iml
+
+# Output of 'npm run build'
+dist
