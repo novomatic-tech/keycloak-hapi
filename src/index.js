@@ -235,8 +235,7 @@ class KeycloakAdapter {
             corsOrigin: ['*'],
             principalConversion: defaultPrincipalConversion,
             principalNameAttribute: 'name',
-            shouldRedirectUnauthenticated: defaultShouldRedirectUnauthenticated(config),
-            cacheName: '_default'
+            shouldRedirectUnauthenticated: defaultShouldRedirectUnauthenticated(config)
         }, config);
         if (!this.config.secret) {
             this.config.secret = this.config.clientSecret;
