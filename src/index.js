@@ -296,7 +296,8 @@ class KeycloakAdapter {
     }
 
     getBaseUrl(request) {
-        return urljoin(`${getProtocol(request)}://${getHost(request)}`, this.config.basePath || '', this.server.realm.modifiers.route.prefix || '');
+        const base = this.config.baseUrl || urljoin(`${getProtocol(request)}://${getHost(request)}`, this.config.basePath || '');
+        return urljoin(base, this.server.realm.modifiers.route.prefix || '');
     }
 
     getLoginRedirectUrl(request) {
@@ -420,7 +421,8 @@ const registerPrincipalRoute = (keycloak) => {
                 principal = Object.assign({}, principal, {
                     accountUrl: keycloak.getAccountUrl(),
                     changePasswordUrl: keycloak.getChangePasswordUrl(),
-                    logoutUrl: urljoin(keycloak.getBaseUrl(request), keycloak.config.logoutUrl)
+                    logoutUrl: urljoin(keycloak.getBaseUrl(request), keycloak.config.logoutUrl),
+                    loginUrl: urljoin(keycloak.getBaseUrl(request), keycloak.config.loginUrl)
                 });
             }
             if (keycloak.config.principalConversion) {
