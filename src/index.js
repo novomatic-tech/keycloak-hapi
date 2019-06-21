@@ -207,7 +207,7 @@ const createPrincipalResource = (principal) => {
 
 const defaultPrincipalConversion = (principal) => principal;
 const defaultShouldRedirectUnauthenticated = (config) => (request) => {
-    return !(config.bearerOnly || request.auth.mode !== 'required' || request.raw.req.url.startsWith('/api/'));
+    return !(config.bearerOnly || request.auth.mode !== 'required' || request.raw.req.url.startsWith('/api/') || request.headers['x-requested-with'] === 'XMLHttpRequest');
 };
 
 const hapi17ReplyStrategy = (reply) => {
