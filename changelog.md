@@ -1,3 +1,7 @@
+## 1.2.1
+
+* Returning `401` response to AJAX requests instead of sending a redirect
+
 ## 1.2.0
 
 * Add possibility to specify a base url to cover cases where we can't relay on `x-forwarded-*` headers
