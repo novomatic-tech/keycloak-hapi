@@ -11,6 +11,7 @@ const urljoin = require('url-join');
 
 const getProtocol = (request) => request.headers['x-forwarded-proto'] || request.server.info.protocol;
 const getHost = (request) => request.headers['x-forwarded-host'] || request.info.host;
+const getLocale = (request) => request.query['kc_locale'] || request.query['ui_locales'];
 
 const throwError = (message) => {
     throw new Error(message)
@@ -363,7 +364,8 @@ class KeycloakAdapter {
                         return keycloak.answer(reply).authenticated({credentials});
                     } else {
                         if (keycloak.config.shouldRedirectUnauthenticated(request)) {
-                            const loginUrl = keycloak.getLoginUrl(keycloak.getLoginRedirectUrl(request));
+                            const locale = getLocale(request);
+                            const loginUrl = urljoin(keycloak.getLoginUrl(keycloak.getLoginRedirectUrl(request)), locale ? `?kc_locale=${locale}` : '');
                             server.log(['debug', 'keycloak'], `User is not authenticated - redirecting to ${loginUrl}`);
                             return reply.response().takeover().redirect(loginUrl);
                         } else {
@@ -522,7 +524,8 @@ const registerLogoutRoute = (keycloak) => {
             keycloak.server.log(['debug', 'keycloak'], 'Signing out');
             const grantStore = keycloak.getGrantStoreByName('session');
             grantStore.clearGrant(request);
-            const redirectUrl = keycloak.getBaseUrl(request);
+            const locale = getLocale(request);
+            const redirectUrl = urljoin(keycloak.getBaseUrl(request), locale ? `?kc_locale=${locale}` : '');
             const logoutUrl = keycloak.getLogoutUrl({redirectUrl});
             return reply.redirect(logoutUrl);
         },
