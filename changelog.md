@@ -1,3 +1,7 @@
+## 1.2.2
+
+* Pass locale query (kc_locale or ui_locale) in logout redirect uri to login page
+
 ## 1.2.1
 
 * Returning `401` response to AJAX requests instead of sending a redirect
