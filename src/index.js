@@ -4,6 +4,8 @@ const Token = require('keycloak-connect/middleware/auth-utils/token');
 const Grant = require('keycloak-connect/middleware/auth-utils/grant');
 const UUID = require('keycloak-connect/uuid');
 const Boom = require('boom');
+const Wreck = require('wreck');
+const querystring = require('querystring');
 const _ = require('lodash');
 const pkg = require('../package.json');
 const crypto = require('crypto');
@@ -232,6 +234,7 @@ class KeycloakAdapter {
         this.config = Object.assign({
             loginUrl: '/sso/login',
             logoutUrl: '/sso/logout',
+            apiLogout: '/api/logout',
             principalUrl: '/api/principal',
             corsOrigin: ['*'],
             principalConversion: defaultPrincipalConversion,
@@ -299,6 +302,11 @@ class KeycloakAdapter {
     getBaseUrl(request) {
         const base = this.config.baseUrl || urljoin(`${getProtocol(request)}://${getHost(request)}`, this.config.basePath || '');
         return urljoin(base, this.server.realm.modifiers.route.prefix || '');
+    }
+
+    getClientBasicAuth() {
+        const clientCredentials = `${this.config.clientId}:${this.config.clientSecret}`;
+        return Buffer.from(clientCredentials).toString('base64');
     }
 
     getLoginRedirectUrl(request) {
@@ -405,6 +413,7 @@ class KeycloakAdapter {
         if (!this.config.bearerOnly) {
             registerLoginRoute(this);
             registerLogoutRoute(this);
+            registerApiLogoutRoute(this);
             registerBackChannelLogoutRoute(this);
         }
         if (this.config.principalUrl) {
@@ -521,7 +530,7 @@ const registerLogoutRoute = (keycloak) => {
         path: keycloak.config.logoutUrl,
         method: 'GET',
         handler(request, reply) {
-            keycloak.server.log(['debug', 'keycloak'], 'Signing out');
+            keycloak.server.log(['debug', 'keycloak'], 'Signing out using redirection');
             const grantStore = keycloak.getGrantStoreByName('session');
             grantStore.clearGrant(request);
             const locale = getLocale(request);
@@ -531,6 +540,38 @@ const registerLogoutRoute = (keycloak) => {
         },
         config: {
             auth: false,
+            cors: {
+                origin: keycloak.config.corsOrigin
+            }
+        }
+    });
+};
+
+const registerApiLogoutRoute = (keycloak) => {
+    keycloak.server.route({
+        path: keycloak.config.apiLogoutUrl,
+        method: 'POST',
+        handler: async (request) => {
+            keycloak.server.log(['debug', 'keycloak'], 'Signing out using refresh token');
+            const grantStore = keycloak.getGrantStoreFor(request);
+            const grant = grantStore.getGrant(request);
+            const logoutUrl = keycloak.getLogoutUrl({});
+            await Wreck.post(logoutUrl, {
+                payload: querystring.stringify({
+                    'refresh_token': grant.refresh_token.token,
+                    'client_id': keycloak.config.clientId
+                }),
+                headers: {
+                    'content-type': 'application/x-www-form-urlencoded',
+                    'authorization': `Basic ${keycloak.getClientBasicAuth()}`
+                }
+            });
+            grantStore.clearGrant(request);
+            return {
+                message: 'User has been successfully logged out.'
+            }
+        },
+        config: {
             cors: {
                 origin: keycloak.config.corsOrigin
             }

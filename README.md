@@ -99,6 +99,7 @@ Parameter | Description | Default
 `minTimeBetweenJwksRequests` | Amount of time, in seconds, specifying minimum interval between two requests to Keycloak to retrieve new public keys. | `10`
 `loginUrl` | An URL of the endpoint responsible for obtaining OAuth2.0's Authorization Code grant. It is exposed only if `bearerOnly` is set to false. | `/sso/login`
 `logoutUrl` | An URL the endpoint responsible for handling logout procedure. It is exposed only if `bearerOnly` is set to false. | `/sso/logout` 
+`apilogoutUrl` | An URL the endpoint responsible for handling logout procedure via a non-browser invocation (without redirects). | `/api/logout` 
 `principalUrl` | An URL of the endpoint exposing resource owner's data (such as its name, ID token, access token etc.). Use `null` in order not to expose this endpoint at all. | `/api/principal`
 `principalConversion` | A function which alters principal representation exposed by `principalUrl` endpoint before it's sent in a response. Define this function if you don't want for example an access token to be exposed. | `undefined` (no conversion)
 `principalNameAttribute` | An access/ID token attribute which will be used as the principal name (user name). It will fallback to *sub* token attribute in case the *principalNameAttribute* is not present. Possible values are *sub*, *preferred_username*, *email*, *name*. | `name`
