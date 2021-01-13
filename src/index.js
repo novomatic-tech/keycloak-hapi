@@ -234,7 +234,7 @@ class KeycloakAdapter {
         this.config = Object.assign({
             loginUrl: '/sso/login',
             logoutUrl: '/sso/logout',
-            apiLogout: '/api/logout',
+            apiLogoutUrl: '/api/logout',
             principalUrl: '/api/principal',
             corsOrigin: ['*'],
             principalConversion: defaultPrincipalConversion,
