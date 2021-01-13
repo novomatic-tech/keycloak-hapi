@@ -1,3 +1,7 @@
+## 2.1.0
+
+* Add api logout endpoint for non-browser invocation (without redirection)
+
 ## 1.2.2
 
 * Pass locale query (kc_locale or ui_locale) in logout redirect uri to login page
