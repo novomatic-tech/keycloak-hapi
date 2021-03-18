@@ -234,6 +234,7 @@ class KeycloakAdapter {
         this.config = Object.assign({
             loginUrl: '/sso/login',
             logoutUrl: '/sso/logout',
+            registerUrl: '/sso/register',
             apiLogoutUrl: '/api/logout',
             principalUrl: '/api/principal',
             corsOrigin: ['*'],
@@ -287,6 +288,16 @@ class KeycloakAdapter {
             '/protocol/openid-connect/logout',
             redirectUrl ? '?redirect_uri=' + encodeURIComponent(redirectUrl) : '',
             idTokenHint ? '?id_token_hint=' + encodeURIComponent(idTokenHint) : '');
+    }
+
+    getRegistrationUrl(redirectUrl, locale) {
+        return this.keycloakConfig.realmUrl +
+            '/protocol/openid-connect/registrations' +
+            '?client_id=' + encodeURIComponent(this.keycloakConfig.clientId) +
+            '&redirect_uri=' + encodeURIComponent(redirectUrl) +
+            '&scope=openid' +
+            '&response_type=code' +
+            (locale ? '&kc_locale=' + locale : '');
     }
 
     getChangePasswordUrl() {
@@ -413,6 +424,7 @@ class KeycloakAdapter {
         if (!this.config.bearerOnly) {
             registerLoginRoute(this);
             registerLogoutRoute(this);
+            registerRegistrationRoute(this);
             registerApiLogoutRoute(this);
             registerBackChannelLogoutRoute(this);
         }
@@ -478,6 +490,30 @@ const registerLoginRoute = (keycloak) => {
                     return keycloak.answer(reply).representation(Boom.forbidden(errorMessage));
                 }
             }
+        },
+        config: {
+            auth: false,
+            cors: {
+                origin: keycloak.config.corsOrigin
+            }
+        }
+    });
+};
+
+const registerRegistrationRoute = (keycloak) => {
+    const log = keycloak.server.log.bind(keycloak.server);
+    keycloak.server.route({
+        path: keycloak.config.registerUrl,
+        method: 'GET',
+        handler: async (request, reply) => {
+            keycloak.server.log(['debug', 'keycloak'], 'Signing out using redirection');
+            const grantStore = keycloak.getGrantStoreByName('session');
+            grantStore.clearGrant(request);
+            const redirectUrl = keycloak.getLoginRedirectUrl(request);
+            const locale = getLocale(request);
+            const registrationUrl = keycloak.getRegistrationUrl(redirectUrl, locale);
+            log(['debug', 'keycloak'], `User is not authenticated - redirecting to ${registrationUrl}`);
+            return reply.redirect(registrationUrl);
         },
         config: {
             auth: false,
