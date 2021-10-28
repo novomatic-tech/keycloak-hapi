@@ -1,6 +1,6 @@
 {
   "name": "keycloak-hapi",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "description": "Integration of Keycloak Authorization Server with HapiJS",
   "main": "dist/index.js",
   "scripts": {
@@ -29,8 +29,8 @@
   "dependencies": {
     "babel-runtime": "^6.26.0",
     "boom": "^7.2.0",
-    "keycloak-connect": "^9.0.2",
-    "lodash": "^4.17.5",
+    "keycloak-connect": "^15.0.2",
+    "lodash": "^4.17.21",
     "url-join": "^4.0.0"
   },
   "peerDependencies": {
