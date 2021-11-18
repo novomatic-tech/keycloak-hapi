@@ -51,7 +51,7 @@ try {
    * if you're writing a frontend web app (bearerOnly = false).
    */
   await server.register({
-      plugin: require('yar'),
+      plugin: require('@hapi/yar'),
       options: {
           storeBlank: false,
           name: 'kc_session',
@@ -115,5 +115,4 @@ See https://github.com/novomatic-tech/keycloak-examples/tree/master/app-web-node
 
 ## Yar compatibility
 
-This package requires the [yar](https://www.npmjs.com/package/yar) library at least in version ``9.1.0``. 
-To get compatibility with version ``8``, use [yar8](https://www.npmjs.com/package/yar8).
+This package requires the [@hapi/yar](https://www.npmjs.com/package/@hapi/yar) library at least in version ``10.1.1``. 

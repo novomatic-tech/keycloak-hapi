@@ -1,15 +1,16 @@
-const KeycloakConfig = require('keycloak-connect/middleware/auth-utils/config');
-const GrantManager = require('keycloak-connect/middleware/auth-utils/grant-manager');
-const Token = require('keycloak-connect/middleware/auth-utils/token');
-const Grant = require('keycloak-connect/middleware/auth-utils/grant');
-const UUID = require('keycloak-connect/uuid');
-const Boom = require('boom');
-const Wreck = require('wreck');
-const querystring = require('querystring');
-const _ = require('lodash');
-const pkg = require('../package.json');
-const crypto = require('crypto');
-const urljoin = require('url-join');
+import KeycloakConfig from 'keycloak-connect/middleware/auth-utils/config';
+import GrantManager from 'keycloak-connect/middleware/auth-utils/grant-manager';
+import Token from 'keycloak-connect/middleware/auth-utils/token';
+import Grant from 'keycloak-connect/middleware/auth-utils/grant';
+import UUID from 'keycloak-connect/uuid';
+import Boom from '@hapi/boom';
+import Wreck from '@hapi/wreck';
+import querystring from 'querystring';
+import _ from 'lodash';
+import pkg from '../package.json';
+import crypto from 'crypto';
+import urljoin from 'url-join';
+import "core-js/stable";
 
 const getProtocol = (request) => request.headers['x-forwarded-proto'] || request.server.info.protocol;
 const getHost = (request) => request.headers['x-forwarded-host'] || request.info.host;
