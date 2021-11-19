@@ -1,6 +1,6 @@
 language: node_js
 node_js:
-  - "8"
+  - "14"
 
 install:
   - npm install
@@ -9,9 +9,7 @@ install:
 deploy:
   provider: npm
   skip_cleanup: true
-  email: "mchmiel@novomatic-tech.com"
+  email: "casino.online@novomatic-tech.com"
   api_key: $AUTH_TOKEN
   on:
     tags: true
-
-

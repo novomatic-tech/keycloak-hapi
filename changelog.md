@@ -1,3 +1,11 @@
+## 4.0.0
+
+* Update hapi dependencies
+
+## 3.0.0
+
+* Update keycloak-connect
+
 ## 2.1.0
 
 * Add api logout endpoint for non-browser invocation (without redirection)

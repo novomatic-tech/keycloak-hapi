@@ -1,10 +1,10 @@
 {
   "name": "keycloak-hapi",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Integration of Keycloak Authorization Server with HapiJS",
   "main": "dist/index.js",
   "scripts": {
-    "build": "babel --plugins transform-runtime src -d dist"
+    "build": "babel src --out-dir dist"
   },
   "repository": {
     "type": "git",
@@ -26,27 +26,25 @@
     "url": "https://github.com/novomatic-tech/keycloak-hapi/issues"
   },
   "homepage": "https://github.com/novomatic-tech/keycloak-hapi#readme",
-  "dependencies": {
-    "babel-runtime": "^6.26.0",
-    "boom": "^7.2.0",
-    "keycloak-connect": "^15.0.2",
-    "lodash": "^4.17.21",
-    "url-join": "^4.0.0"
-  },
-  "peerDependencies": {
-    "hapi": "^17.0.0",
-    "yar": "^9.1.0",
-    "wreck": "^14.2.0"
-  },
   "engines": {
-    "node": ">=8",
-    "npm": ">=5"
+    "node": ">=14",
+    "npm": ">=6"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.12.5",
+    "@hapi/boom": "^9.1.4",
+    "@hapi/hapi": "^20.2.1",
+    "@hapi/wreck": "^17.1.0",
+    "@hapi/yar": "^10.1.1",
+    "keycloak-connect": "^15.0.2",
+    "core-js": "^3.19.1",
+    "lodash": "^4.17.21",
+    "url-join": "^4.0.1"
   },
   "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-plugin-transform-async-to-generator": "^6.24.1",
-    "babel-plugin-transform-runtime": "^6.23.0",
-    "babel-polyfill": "^6.26.0",
-    "babel-preset-env": "^1.6.1"
+    "@babel/core": "^7.12.10",
+    "@babel/cli": "^7.12.10",
+    "@babel/plugin-transform-runtime": "^7.12.10",
+    "@babel/preset-env": "^7.12.11"
   }
 }
