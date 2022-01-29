@@ -214,6 +214,10 @@ const defaultShouldRedirectUnauthenticated = (config) => (request) => {
     return !(config.bearerOnly || request.auth.mode !== 'required' || request.raw.req.url.startsWith('/api/') || request.headers['x-requested-with'] === 'XMLHttpRequest');
 };
 
+const messageWithGrant = (message, grant, config) => {
+    return config.shouldLogGrant ? `${message}:\n${grant}` : `${message}.`;
+}
+
 const hapi17ReplyStrategy = (reply) => {
     return {
         authenticated: (options) => reply.authenticated(options),
@@ -241,7 +245,8 @@ class KeycloakAdapter {
             corsOrigin: ['*'],
             principalConversion: defaultPrincipalConversion,
             principalNameAttribute: 'name',
-            shouldRedirectUnauthenticated: defaultShouldRedirectUnauthenticated(config)
+            shouldRedirectUnauthenticated: defaultShouldRedirectUnauthenticated(config),
+            shouldLogGrant: true
         }, config);
         if (!this.config.secret) {
             this.config.secret = this.config.clientSecret;
@@ -354,7 +359,7 @@ class KeycloakAdapter {
             if (this.grantManager.isGrantRefreshable(grant)) {
                 grant = await this.grantManager.ensureFreshness(grant);
                 if (grant !== existingGrant) {
-                    log(['debug', 'keycloak'], `Access token has been refreshed: ${grant}`);
+                    log(['debug', 'keycloak'], messageWithGrant('Access token has been refreshed', grant, this.config));
                     grant = await this.grantManager.validateGrant(grant);
                     grantStore.saveGrant(request, grant);
                 }
@@ -483,7 +488,7 @@ const registerLoginRoute = (keycloak) => {
                     log(['debug', 'keycloak'], `Processing authorization code`);
                     const grant = await keycloak.obtainGrantFromCode(request.query.code, redirectUrl, request.yar.id, keycloak.getBaseUrl(request));
                     grantStore.saveGrant(request, grant);
-                    log(['debug', 'keycloak'], `Access token has been successfully obtained from the authorization code:\n${grant}`);
+                    log(['debug', 'keycloak'], messageWithGrant('Access token has been successfully obtained from the authorization code', grant, keycloak.config));
                     return reply.redirect(keycloak.getBaseUrl(request));
                 } catch (err) {
                     const errorMessage = `Unable to authenticate - could not obtain grant code. ${err}`;

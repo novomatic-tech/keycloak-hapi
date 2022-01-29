@@ -1,3 +1,7 @@
+## 4.1.0
+
+* Add `shouldLogGrant` flag indicating whether an obtained grant should be logged
+
 ## 4.0.0
 
 * Update hapi dependencies
