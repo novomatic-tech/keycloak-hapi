@@ -106,6 +106,7 @@ Parameter | Description | Default
 `shouldRedirectUnauthenticated` | A function used for not authenticated users. It takes a `request` as a parameter and should return: - `false` - if the endpoint should reply with an HTTP 401 right away. - `true` - if the user should be redirected to the Keycloak login page. By default, `401` will be returned when `bearerOnly` is set to `true`, route auth mode is set to `optional` or `try`, if we're accessing `/api/*` route or request was AJAX (it contains header `x-requested-with` set to `XMLHttpRequest`). |
 `basePath` | A base path to use if app is running behind a reverse proxy. This path will be inserted in redirect URIs. It could be useful when proxy changes the base path.  | `undefined`
 `baseUrl` | A base URL to use if app is running behind a reverse proxy where we can't rely on `x-forwarded-host` and `x-forwarded-proto` headers. When set, request headers and `basePath` (if set) are ignored. Note that `server.realm.modifiers.route.prefix` is appended to `baseUrl` when base URL is calculated. This URL will be inserted in redirect URIs. | `undefined`
+`redirectUris` | List of valid URI pattern a browser can redirect to after a successful login. Simple wildcards are allowed such as `http://example.com/*`. URIs are based on URLPattern API. Relative path can be specified too such as `/my/relative/path/*`. Relative paths are relative to the client base URL and it is requierd to be specified in configuration. | `['*']`
 
 ## Examples
 

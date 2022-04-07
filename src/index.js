@@ -8,9 +8,11 @@ const _ = require('lodash');
 const pkg = require('../package.json');
 const crypto = require('crypto');
 const urljoin = require('url-join');
+require("urlpattern-polyfill");
 
 const getProtocol = (request) => request.headers['x-forwarded-proto'] || request.server.info.protocol;
 const getHost = (request) => request.headers['x-forwarded-host'] || request.info.host;
+const getPort = (request) => request.headers['x-forwarded-port'] || request.info.port;
 const getLocale = (request) => request.query['kc_locale'] || request.query['ui_locales'];
 
 const throwError = (message) => {
@@ -56,6 +58,50 @@ class ActionTokenVerifier {
         return token;
     }
 
+}
+
+class RedirectUrlVerifier {
+
+    constructor(redirectUris, baseUrl) {
+        this.validRedirects = redirectUris;
+        this.baseUrl = baseUrl;
+    }
+
+    test(validRedirect, redirectUrl) {
+        if(validRedirect === '*') {
+            return true;
+        } else if(validRedirect.startsWith('http')) {
+            return new URLPattern(validRedirect).test(redirectUrl);
+        } else if(validRedirect.startsWith('/')) {
+            const base = new URL(this.baseUrl);
+            return new URLPattern({ protocol: base.protocol, hostname:base.hostname, pathname: validRedirect }).test(redirectUrl);
+        } else {
+            return false;
+        }
+    }
+
+    isEnabled() {
+        return this.validRedirects != null && this.validRedirects.length > 0
+    }
+
+    isValid(redirectUrl) {
+        for (const validRedirect of this.validRedirects) {
+            if (this.test(validRedirect, redirectUrl)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+class RedirectUrlStore {
+    getUrl(request, state) {
+        return request.yar.flash(state);
+    }
+
+    saveUrl(request, state, redirectUrl) {
+        return request.yar.flash(state, redirectUrl, true);
+    }
 }
 
 class SessionGrantStore {
@@ -244,6 +290,8 @@ class KeycloakAdapter {
         this.keycloakConfig = new KeycloakConfig(this.config);
         this.grantManager = new GrantManager(this.keycloakConfig);
         this.actionTokenVerifier = new ActionTokenVerifier(this.grantManager);
+        this.redirectUrlStore = new RedirectUrlStore();
+        this.redirectUrlVerifier = new RedirectUrlVerifier(this.config.redirectUris, this.config.baseUrl);
         this.grantSerializer = new GrantSerializer(this.config.clientId);
         this.grantStores = this.createGrantStores(this.config.bearerOnly);
         this.replyStrategy = server.version < '17'
@@ -305,6 +353,22 @@ class KeycloakAdapter {
         return urljoin(this.getBaseUrl(request), this.config.loginUrl, '?auth_callback=1');
     }
 
+    getRequestUrl(request) {
+        const protocol = getProtocol(request);
+        const host = getHost(request);
+        const port = getPort(request) || '';
+        return urljoin(`${protocol}://${host}`, (port === '' ? '' : ':' + port), request.url.path || '')
+    }
+
+    getRedirectUrl(request) {
+        if(this.redirectUrlVerifier.isEnabled()) {
+            const originRedirectUrl = this.redirectUrlStore.getUrl(request, request.query.state);
+            return originRedirectUrl && originRedirectUrl.length > 0 ? originRedirectUrl : this.getBaseUrl(request);
+        } else {
+            return this.getBaseUrl(request);
+        }
+    }
+
     getAssignedRoles(accessToken) {
         const appRoles = _.get(accessToken, `content.resource_access['${this.keycloakConfig.clientId}'].roles`, []);
         const realmRoles = _.get(accessToken, 'content.realm_access.roles', []);
@@ -347,10 +411,23 @@ class KeycloakAdapter {
             grantStore.clearGrant(request);
             return null;
         }
-    };
+    }
 
     answer(reply) {
         return this.replyStrategy(reply);
+    }
+
+    createLoginUrl(request) {
+        const locale = getLocale(request);
+        const loginRedirectUrl = this.getLoginRedirectUrl(request);
+        const state = UUID();
+        if(this.redirectUrlVerifier.isEnabled()) {
+            const originRedirectUrl = this.getRequestUrl(request);
+            if(this.redirectUrlVerifier.isValid(originRedirectUrl)) {
+                this.redirectUrlStore.saveUrl(request, state, originRedirectUrl);
+            }
+        }
+        return urljoin(this.getLoginUrl(loginRedirectUrl, state), locale ? `?kc_locale=${locale}` : '');
     }
 
     getAuthScheme() {
@@ -364,8 +441,7 @@ class KeycloakAdapter {
                         return keycloak.answer(reply).authenticated({credentials});
                     } else {
                         if (keycloak.config.shouldRedirectUnauthenticated(request)) {
-                            const locale = getLocale(request);
-                            const loginUrl = urljoin(keycloak.getLoginUrl(keycloak.getLoginRedirectUrl(request)), locale ? `?kc_locale=${locale}` : '');
+                            const loginUrl = keycloak.createLoginUrl(request);
                             server.log(['debug', 'keycloak'], `User is not authenticated - redirecting to ${loginUrl}`);
                             return reply.response().takeover().redirect(loginUrl);
                         } else {
@@ -445,9 +521,9 @@ const registerLoginRoute = (keycloak) => {
             if (grantStore.canRetrieveGrantFrom(request)) {
                 return reply.redirect(keycloak.getBaseUrl(request));
             }
-            const redirectUrl = keycloak.getLoginRedirectUrl(request);
+            const loginRedirectUrl = keycloak.getLoginRedirectUrl(request);
             if (!request.query.auth_callback) {
-                const loginUrl = keycloak.getLoginUrl(redirectUrl);
+                const loginUrl = keycloak.getLoginUrl(loginRedirectUrl);
                 log(['debug', 'keycloak'], `User is not authenticated - redirecting to ${loginUrl}`);
                 return reply.redirect(loginUrl);
             } else {
@@ -459,10 +535,13 @@ const registerLoginRoute = (keycloak) => {
                 }
                 try {
                     log(['debug', 'keycloak'], `Processing authorization code`);
-                    const grant = await keycloak.obtainGrantFromCode(request.query.code, redirectUrl, request.yar.id, keycloak.getBaseUrl(request));
+                    const grant = await keycloak.obtainGrantFromCode(request.query.code, loginRedirectUrl, request.yar.id, keycloak.getBaseUrl(request));
                     grantStore.saveGrant(request, grant);
                     log(['debug', 'keycloak'], `Access token has been successfully obtained from the authorization code:\n${grant}`);
-                    return reply.redirect(keycloak.getBaseUrl(request));
+
+                    const redirectUrl = keycloak.getRedirectUrl(request);
+                    log(['debug', 'keycloak'], `Request redirected to redirectUrl:\n${redirectUrl}`);
+                    return reply.redirect(redirectUrl);
                 } catch (err) {
                     const errorMessage = `Unable to authenticate - could not obtain grant code. ${err}`;
                     log(['error', 'keycloak'], errorMessage);
