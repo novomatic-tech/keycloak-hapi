@@ -292,8 +292,8 @@ class KeycloakAdapter {
         return urljoin(
             this.keycloakConfig.realmUrl,
             '/protocol/openid-connect/logout',
-            redirectUrl ? '?redirect_uri=' + encodeURIComponent(redirectUrl) : '',
-            idTokenHint ? '?id_token_hint=' + encodeURIComponent(idTokenHint) : '');
+            redirectUrl ? '?post_logout_redirect_uri=' + encodeURIComponent(redirectUrl) : '',
+            idTokenHint ? '?id_token_hint=' + encodeURIComponent(idTokenHint) : '?client_id=' + encodeURIComponent(this.keycloakConfig.clientId));
     }
 
     getRegistrationUrl(redirectUrl, locale) {
@@ -574,10 +574,15 @@ const registerLogoutRoute = (keycloak) => {
         handler(request, reply) {
             keycloak.server.log(['debug', 'keycloak'], 'Signing out using redirection');
             const grantStore = keycloak.getGrantStoreByName('session');
-            grantStore.clearGrant(request);
+            const grant = grantStore.getGrant(request);
             const locale = getLocale(request);
             const redirectUrl = urljoin(keycloak.getBaseUrl(request), locale ? `?kc_locale=${locale}` : '');
-            const logoutUrl = keycloak.getLogoutUrl({redirectUrl});
+            const idTokenHint = grant.id_token ? grant.id_token.token : undefined;
+            const logoutUrl = keycloak.getLogoutUrl({
+                redirectUrl: redirectUrl,
+                idTokenHint: idTokenHint
+            });
+            grantStore.clearGrant(request);
             return reply.redirect(logoutUrl);
         },
         config: {
